@@ -9,7 +9,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { DefaultText } from './default-text';
@@ -25,7 +24,6 @@ import {
   getCurrentValue,
   isOptionGroupCheckChips,
   isOptionGroupRangeSlider,
-  isOptionGroupButtons,
   isOptionGroupSlider,
 } from '../data/option-groups';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -40,6 +38,17 @@ import { cmToFeetInchesStr, kmToMilesStr } from '../units/units';
 import { TopNavBarButton } from './top-nav-bar-button';
 import { QAndADevice } from './q-and-a-device';
 import { useAppTheme } from '../app-theme/app-theme';
+import { listen, notify } from '../events/events';
+import {
+  SearchFilterAnswer,
+  setSearchFilterAnswers,
+  getSearchFilterAnswers,
+} from '../navigation/search-filter-state';
+import {
+  patchSearchFilters,
+  setSearchFilters,
+  useSearchFilters,
+} from '../events/search-filters';
 
 const getCurrentValueAsLabel = (og: OptionGroup<OptionGroupInputs> | undefined) => {
   if (!og) return undefined;
@@ -106,13 +115,7 @@ const getCurrentValueAsLabel = (og: OptionGroup<OptionGroupInputs> | undefined) 
 const optionGroupToDataKey = (og: OptionGroup<OptionGroupInputs>) =>
   og.title.toLowerCase().replaceAll(' ', '_');
 
-type AnswerItem = {
-  question_id: number,
-  question: string,
-  topic: string,
-  answer: boolean | null,
-  accept_unanswered: boolean,
-};
+type AnswerItem = SearchFilterAnswer;
 
 const fetchQuestionSearch = async (q: string): Promise<AnswerItem[]> => {
   const resultsPerPage = 25;
@@ -137,33 +140,44 @@ const SearchFilterScreen = () => {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="Search Filter Tab" component={SearchFilterScreen_} />
-      <Stack.Screen name="Search Filter Option Screen" component={OptionScreen} />
-      <Stack.Screen name="Q&A Filter Screen" component={QandQFilterScreen} />
+      <Stack.Screen
+        name="Search Filter Tab"
+        component={SearchFilterScreen_}
+        options={{ title: 'Search filters' }}
+      />
+      <Stack.Screen
+        name="Search Filter Option Screen"
+        component={OptionScreen}
+        options={{ title: 'Edit search filter' }}
+      />
+      <Stack.Screen
+        name="Q&A Filter Screen"
+        component={QandQFilterScreen}
+        options={{ title: 'Q&A filters' }}
+      />
     </Stack.Navigator>
   );
 };
 
-const SearchFilterScreen_ = ({navigation, route}) => {
+const SearchFilterScreen_ = ({navigation}) => {
   const { appTheme } = useAppTheme();
   const [signedInUser] = useSignedInUser();
 
-  const onPressRefresh = route?.params?.onPressRefresh;
-
-  const [, _triggerRender] = useState({});
-  const triggerRender = useCallback(() => _triggerRender({}), [_triggerRender]);
-
-  const [data, setData] = useState<any>(null);
+  const data = useSearchFilters();
 
   const answers: AnswerItem[] = data?.answer ?? [];
 
-  const onSubmitSuccess = useCallback(() => {
-    triggerRender();
-  }, [triggerRender]);
-
   const onPressQAndAAnswers = useCallback(() => {
-    return navigation.navigate("Q&A Filter Screen", {answers, triggerRender})
+    setSearchFilterAnswers(answers);
+    navigation.navigate("Q&A Filter Screen");
   }, [navigation, answers]);
+
+  useEffect(() => {
+    return listen<AnswerItem[]>('search-filter-answers-updated', (next) => {
+      if (!next) return;
+      patchSearchFilters({ answer: next });
+    });
+  }, []);
 
   const Button_ = useCallback((props) => {
     return <ButtonForOption
@@ -171,126 +185,68 @@ const SearchFilterScreen_ = ({navigation, route}) => {
       navigationScreen="Search Filter Option Screen"
       showSkipButton={false}
       noSettingText="Any"
-      onSubmitSuccess={onSubmitSuccess}
       {...props}
     />;
   }, []);
 
-  const addCurrentValue = (optionGroups: OptionGroup<OptionGroupInputs>[]) =>
-    optionGroups.map(
-      (
-        og: OptionGroup<OptionGroupInputs>,
-      ): OptionGroup<OptionGroupInputs> =>
-        _.merge(
-          {},
-          og,
-          isOptionGroupCheckChips(og.input) ? {
-            input: {
-              checkChips: {
-                values: og.input.checkChips.values.map((v) => ({
-                  ...v,
-                  checked: (
-                    (data ?? {})[
-                      optionGroupToDataKey(og)
-                    ] ?? ([] as string[])
-                  ).includes(v.label)
-                }))
-              }
-            }
-          } : {},
-          isOptionGroupButtons(og.input) ? {
-            input: {
-              buttons: {
-                currentValue: (data ?? {})[optionGroupToDataKey(og)]
-              }
-            }
-          } : {},
-          isOptionGroupSlider(og.input) ? {
-            input: {
-              slider: {
-                currentValue: (data ?? {})[optionGroupToDataKey(og)]
-              }
-            }
-          } : {},
-          isOptionGroupRangeSlider(og.input) && og.title === 'Age' ? {
-            input: {
-              rangeSlider: {
-                currentMin: (data ?? {})[optionGroupToDataKey(og)]?.min_age,
-                currentMax: (data ?? {})[optionGroupToDataKey(og)]?.max_age,
-              }
-            }
-          } : {},
-          isOptionGroupRangeSlider(og.input) && og.title === 'Height' ? {
-            input: {
-              rangeSlider: {
-                currentMin: (data ?? {})[optionGroupToDataKey(og)]?.min_height_cm,
-                currentMax: (data ?? {})[optionGroupToDataKey(og)]?.max_height_cm,
-              }
-            }
-          } : {},
-        )
-    );
+  const withCurrent = (
+    og: OptionGroup<OptionGroupInputs>,
+  ): OptionGroup<OptionGroupInputs> => {
+    const value = data?.[optionGroupToDataKey(og)];
+    const isImperial = signedInUser?.units === 'Imperial';
+
+    if (isOptionGroupCheckChips(og.input)) {
+      const checked: string[] = value ?? [];
+      return _.merge({}, og, { input: { checkChips: {
+        values: og.input.checkChips.values.map((v) => ({
+          ...v,
+          checked: checked.includes(v.label),
+        })),
+      } } });
+    }
+    if (og.title === 'Furthest Distance' && isOptionGroupSlider(og.input)) {
+      return _.merge({}, og, { input: { slider: {
+        currentValue: value,
+        unitsLabel: isImperial ? "mi." : 'km',
+        valueRewriter: isImperial ? kmToMilesStr : undefined,
+      } } });
+    }
+    if (og.title === 'Age' && isOptionGroupRangeSlider(og.input)) {
+      return _.merge({}, og, { input: { rangeSlider: {
+        currentMin: value?.min_age,
+        currentMax: value?.max_age,
+      } } });
+    }
+    if (og.title === 'Height' && isOptionGroupRangeSlider(og.input)) {
+      return _.merge({}, og, { input: { rangeSlider: {
+        currentMin: value?.min_height_cm,
+        currentMax: value?.max_height_cm,
+        unitsLabel: isImperial ? "ft'in\"" : 'cm',
+        valueRewriter: isImperial ? cmToFeetInchesStr : undefined,
+      } } });
+    }
+    if (value === undefined) return og;
+    const inputKey = Object.keys(og.input)[0];
+    return _.merge({}, og, { input: { [inputKey]: { currentValue: value } } });
+  };
 
   useEffect(() => {
     (async () => {
       const response = await api('get', '/search-filters');
       if (response.json) {
-        setData(response.json);
+        setSearchFilters(response.json);
       }
     })();
   }, []);
 
-  const [
-    _searchTwoWayBasicsOptionGroups,
-    _searchOtherBasicsOptionGroups,
-    _searchInteractionsOptionGroups,
-  ] = useMemo(
-    () => [
-      addCurrentValue(searchTwoWayBasicsOptionGroups),
-      addCurrentValue(searchOtherBasicsOptionGroups),
-      addCurrentValue(searchInteractionsOptionGroups),
-    ],
-    [data]
-  );
-
-  useEffect(() => {
-    _searchTwoWayBasicsOptionGroups.forEach((og: OptionGroup<OptionGroupInputs>) => {
-      if (isOptionGroupSlider(og.input) && og.title === 'Furthest Distance') {
-        og.input.slider.unitsLabel = (
-          signedInUser?.units === 'Imperial' ?
-          "mi." : 'km');
-
-        og.input.slider.valueRewriter = (
-          signedInUser?.units === 'Imperial' ?
-          kmToMilesStr : undefined);
-      }
-    });
-  }, [
-    _searchTwoWayBasicsOptionGroups,
-    signedInUser?.units
-  ]);
-
-  useEffect(() => {
-    _searchOtherBasicsOptionGroups.forEach((og: OptionGroup<OptionGroupInputs>) => {
-      if (isOptionGroupRangeSlider(og.input) && og.title === 'Height') {
-        og.input.rangeSlider.unitsLabel = (
-          signedInUser?.units === 'Imperial' ?
-          "ft'in\"" : 'cm');
-
-        og.input.rangeSlider.valueRewriter = (
-          signedInUser?.units === 'Imperial' ?
-          cmToFeetInchesStr : undefined);
-      }
-    });
-  }, [
-    _searchOtherBasicsOptionGroups,
-    signedInUser?.units
-  ]);
+  const _searchTwoWayBasicsOptionGroups = searchTwoWayBasicsOptionGroups.map(withCurrent);
+  const _searchOtherBasicsOptionGroups = searchOtherBasicsOptionGroups.map(withCurrent);
+  const _searchInteractionsOptionGroups = searchInteractionsOptionGroups.map(withCurrent);
 
   const goBack = useCallback(() => {
-    onPressRefresh && onPressRefresh();
+    notify('search-refresh-requested');
     navigation.goBack();
-  }, [navigation, onPressRefresh]);
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
@@ -411,10 +367,31 @@ const SearchFilterScreen_ = ({navigation, route}) => {
   );
 };
 
-const QandQFilterScreen = ({navigation, route}) => {
+const QandQFilterScreen = ({navigation}) => {
   const { appTheme } = useAppTheme();
-  const answers: AnswerItem[] = route?.params?.answers;
-  const triggerRender = route?.params?.triggerRender;
+
+  // Source of truth for the current filter answers lives in a module-level
+  // store so this screen doesn't need a mutable object handed through
+  // route.params.
+  const [answers, setLocalAnswers] = useState<AnswerItem[]>(
+    () => getSearchFilterAnswers());
+
+  // Cold-start cases (direct deep link / page refresh) bypass the parent
+  // `Search Filter Tab` and therefore the module-level store is empty.
+  // Fetch the saved answers once on mount when that's the case so the screen
+  // isn't permanently blank.
+  useEffect(() => {
+    if (getSearchFilterAnswers().length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const response = await api('get', '/search-filters');
+      const fetched: AnswerItem[] = response?.json?.answer ?? [];
+      if (cancelled || fetched.length === 0) return;
+      setSearchFilterAnswers(fetched);
+      setLocalAnswers(fetched);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState<AnswerItem[] | null>();
@@ -437,10 +414,9 @@ const QandQFilterScreen = ({navigation, route}) => {
   }, [_fetchQuestionSearch]);
 
   const onAnswerChange = useCallback((newAnswers: AnswerItem[]) => {
-    answers.length = 0;
-    answers.push(...newAnswers);
-    triggerRender();
-  }, [answers]);
+    setSearchFilterAnswers(newAnswers);
+    setLocalAnswers([...newAnswers]);
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeAreaView}>

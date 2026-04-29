@@ -7,6 +7,8 @@ import {
   useSignedInUser,
 } from '../events/signed-in-user';
 import { sessionToken, sessionPersonUuid } from '../kv-storage/session-token';
+import { lastPath } from '../kv-storage/last-path';
+import { resetUserScopedClientState } from '../navigation/reset-client-state';
 import { X } from "react-native-feather";
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import { faPalette } from '@fortawesome/free-solid-svg-icons/faPalette'
@@ -22,6 +24,7 @@ import { faLocationDot } from '@fortawesome/free-solid-svg-icons/faLocationDot'
 import { faImage } from '@fortawesome/free-solid-svg-icons/faImage'
 import { faCalendar } from '@fortawesome/free-solid-svg-icons/faCalendar'
 import { faGhost } from '@fortawesome/free-solid-svg-icons/faGhost'
+import { faGlobe } from '@fortawesome/free-solid-svg-icons/faGlobe'
 import { faChild } from '@fortawesome/free-solid-svg-icons/faChild'
 import { faChildren } from '@fortawesome/free-solid-svg-icons/faChildren'
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -30,6 +33,8 @@ import { login, logout } from '../chat/application-layer';
 import { LOGARITHMIC_SCALE, Scale } from "../scales/scales";
 import { VerificationBadge } from '../components/verification-badge';
 import { notify } from '../events/events';
+import { patchProfileInfo } from '../events/profile-info';
+import { patchSearchFilters } from '../events/search-filters';
 import { ClubItem } from '../club/club';
 import { DefaultText } from '../components/default-text';
 import {
@@ -44,9 +49,7 @@ import { notifyUpdatedVerification } from '../verification/verification';
 import { searchQueue } from '../api/queue';
 import { setAppThemeName } from '../app-theme/app-theme';
 import { showPointOfSale } from '../components/modal/point-of-sale-modal';
-import { descriptionStyle } from '../components/option-screen';
-
-const noneFontSize = 16;
+import { descriptionStyle, noneFontSize } from '../components/option-styles';
 
 const maxDailySelfies = 'eight';
 
@@ -291,16 +294,6 @@ const getCurrentValue = (x: OptionGroupInputs | undefined) => {
   if (isOptionGroupCheckChips(x))
     return x.checkChips.values.flatMap((v) => v.checked ? [v.label] : []);
 }
-
-const newCheckChipValues = (
-  currentValues: { label: string, checked: boolean }[],
-  newValues: string[],
-) => {
-  return currentValues.map((v) => ({
-    ...v,
-    checked: newValues.includes(v.label),
-  }));
-};
 
 const genders = [
   'Man',
@@ -556,7 +549,7 @@ const genderOptionGroup: OptionGroup<OptionGroupButtons> = {
 
         const ok = (await japi('patch', '/profile-info', { gender })).ok;
         if (ok) {
-          this.currentValue = gender;
+          patchProfileInfo({ gender });
           notifyUpdatedVerification({ gender: false });
         }
         return ok;
@@ -590,7 +583,7 @@ const ethnicityOptionGroup: OptionGroup<OptionGroupButtons> = {
 
         const ok = (await japi('patch', '/profile-info', { ethnicity })).ok;
         if (ok) {
-          this.currentValue = ethnicity;
+          patchProfileInfo({ ethnicity });
           notifyUpdatedVerification({ ethnicity: false });
         }
         return ok;
@@ -611,9 +604,9 @@ const locationOptionGroup: OptionGroup<OptionGroupLocationSelector> = {
   description: "What city do you live in?",
   input: {
     locationSelector: {
-      submit: async function(location: string) {
+      submit: async (location: string) => {
         const ok = (await japi('patch', '/profile-info', { location })).ok;
-        if (ok) this.currentValue = location;
+        if (ok) patchProfileInfo({ location });
         return ok;
       },
     }
@@ -628,9 +621,9 @@ const orientationOptionGroup: OptionGroup<OptionGroupButtons> = {
   input: {
     buttons: {
       values: orientations,
-      submit: async function(orientation: string) {
+      submit: async (orientation: string) => {
         const ok = (await japi('patch', '/profile-info', { orientation })).ok;
-        if (ok) this.currentValue = orientation;
+        if (ok) patchProfileInfo({ orientation });
         return ok;
       },
     }
@@ -644,9 +637,9 @@ const lookingForOptionGroup: OptionGroup<OptionGroupButtons> = {
   input: {
     buttons: {
       values: lookingFor,
-      submit: async function(lookingFor: string) {
+      submit: async (lookingFor: string) => {
         const ok = (await japi('patch', '/profile-info', { looking_for: lookingFor })).ok;
-        if (ok) this.currentValue = lookingFor;
+        if (ok) patchProfileInfo({ looking_for: lookingFor });
         return ok;
       },
     }
@@ -664,9 +657,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     description: "What’s your profession?",
     input: {
       textShort: {
-        submit: async function(occupation: string) {
+        submit: async (occupation: string) => {
           const ok = (await japi('patch', '/profile-info', { occupation })).ok;
-          if (ok) this.currentValue = occupation;
+          if (ok) patchProfileInfo({ occupation });
           return ok;
         },
         invalidMsg: 'Try again',
@@ -679,9 +672,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     description: "Where did you study?",
     input: {
       textShort: {
-        submit: async function(education: string) {
+        submit: async (education: string) => {
           const ok = (await japi('patch', '/profile-info', { education })).ok;
-          if (ok) this.currentValue = education;
+          if (ok) patchProfileInfo({ education });
           return ok;
         },
         invalidMsg: 'Try again',
@@ -705,9 +698,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         defaultValue: 170,
         step: 1,
         unitsLabel: 'cm',
-        submit: async function(height: number) {
+        submit: async (height: number) => {
           const ok = (await japi('patch', '/profile-info', { height })).ok;
-          if (ok) this.currentValue = height;
+          if (ok) patchProfileInfo({ height });
           return ok;
         },
       },
@@ -727,9 +720,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(smoking: string) {
+        submit: async (smoking: string) => {
           const ok = (await japi('patch', '/profile-info', { smoking })).ok;
-          if (ok) this.currentValue = smoking;
+          if (ok) patchProfileInfo({ smoking });
           return ok;
         },
       }
@@ -742,9 +735,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: frequency,
-        submit: async function(drinking: string) {
+        submit: async (drinking: string) => {
           const ok = (await japi('patch', '/profile-info', { drinking })).ok;
-          if (ok) this.currentValue = drinking;
+          if (ok) patchProfileInfo({ drinking });
           return ok;
         },
       }
@@ -763,9 +756,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(drugs: string) {
+        submit: async (drugs: string) => {
           const ok = (await japi('patch', '/profile-info', { drugs })).ok;
-          if (ok) this.currentValue = drugs;
+          if (ok) patchProfileInfo({ drugs });
           return ok;
         },
       }
@@ -778,9 +771,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(longDistance: string) {
+        submit: async (longDistance: string) => {
           const ok = (await japi('patch', '/profile-info', { long_distance: longDistance })).ok;
-          if (ok) this.currentValue = longDistance;
+          if (ok) patchProfileInfo({ long_distance: longDistance });
           return ok;
         },
       }
@@ -793,11 +786,11 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: relationshipStatus,
-        submit: async function(relationshipStatus: string) {
+        submit: async (relationshipStatus: string) => {
           const ok = (
             await japi('patch', '/profile-info', { relationship_status: relationshipStatus })
           ).ok;
-          if (ok) this.currentValue = relationshipStatus;
+          if (ok) patchProfileInfo({ relationship_status: relationshipStatus });
           return ok;
         },
       }
@@ -816,9 +809,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(hasKids: string) {
+        submit: async (hasKids: string) => {
           const ok = (await japi('patch', '/profile-info', { has_kids: hasKids })).ok;
-          if (ok) this.currentValue = hasKids;
+          if (ok) patchProfileInfo({ has_kids: hasKids });
           return ok;
         },
       }
@@ -837,9 +830,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNoMaybe,
-        submit: async function(wantsKids: string) {
+        submit: async (wantsKids: string) => {
           const ok = (await japi('patch', '/profile-info', { wants_kids: wantsKids })).ok;
-          if (ok) this.currentValue = wantsKids;
+          if (ok) patchProfileInfo({ wants_kids: wantsKids });
           return ok;
         },
       }
@@ -852,9 +845,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: frequency,
-        submit: async function(exercise: string) {
+        submit: async (exercise: string) => {
           const ok = (await japi('patch', '/profile-info', { exercise })).ok;
-          if (ok) this.currentValue = exercise;
+          if (ok) patchProfileInfo({ exercise });
           return ok;
         },
       }
@@ -873,9 +866,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: religions,
-        submit: async function(religion: string) {
+        submit: async (religion: string) => {
           const ok = (await japi('patch', '/profile-info', { religion })).ok;
-          if (ok) this.currentValue = religion;
+          if (ok) patchProfileInfo({ religion });
           return ok;
         },
       }
@@ -888,9 +881,9 @@ const basicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: starSigns,
-        submit: async function(starSign: string) {
+        submit: async (starSign: string) => {
           const ok = (await japi('patch', '/profile-info', { star_sign: starSign })).ok;
-          if (ok) this.currentValue = starSign;
+          if (ok) patchProfileInfo({ star_sign: starSign });
           return ok;
         },
       }
@@ -921,7 +914,7 @@ const themePickerOptionGroups: OptionGroup<OptionGroupThemePicker | OptionGroupB
     },
     input: {
       themePicker: {
-        submit: async function (titleColor, bodyColor, backgroundColor) {
+        submit: async (titleColor, bodyColor, backgroundColor) => {
           const { hasGold = false } = getSignedInUser() ?? {};
           if (!hasGold) {
             showPointOfSale('blocked');
@@ -935,11 +928,7 @@ const themePickerOptionGroups: OptionGroup<OptionGroupThemePicker | OptionGroupB
           };
 
           const ok = (await japi('patch', '/profile-info', { theme })).ok;
-          if (ok) {
-            this.currentTitleColor = titleColor;
-            this.currentBodyColor = bodyColor;
-            this.currentBackgroundColor = backgroundColor;
-          }
+          if (ok) patchProfileInfo({ theme });
           return ok;
         },
       },
@@ -969,19 +958,14 @@ const themePickerOptionGroups: OptionGroup<OptionGroupThemePicker | OptionGroupB
     input: {
       buttons: {
         values: offOn,
-        submit: async function(input: 'On' | 'Off') {
+        submit: async (input: 'On' | 'Off') => {
           const { hasGold = false } = getSignedInUser() ?? {};
           if (!hasGold) {
             showPointOfSale('blocked');
             return false;
           }
 
-          if (input === 'On') {
-            setAppThemeName('dark');
-          } else {
-            setAppThemeName('light');
-          }
-          this.currentValue = input;
+          setAppThemeName(input === 'On' ? 'dark' : 'light');
           return true;
         },
       }
@@ -1003,10 +987,10 @@ const generalSettingsOptionGroups: OptionGroup<OptionGroupButtons>[] = [
     input: {
       buttons: {
         values: ['Metric', 'Imperial'],
-        submit: async function(units: 'Imperial' | 'Metric') {
+        submit: async (units: 'Imperial' | 'Metric') => {
           const ok = (await japi('patch', '/profile-info', { units })).ok;
           if (ok) {
-            this.currentValue = units;
+            patchProfileInfo({ units });
             setSignedInUser((signedInUser) => {
               if (signedInUser) {
                 return { ...signedInUser, units }
@@ -1030,9 +1014,9 @@ const notificationSettingsOptionGroups: OptionGroup<OptionGroupButtons>[] = [
     input: {
       buttons: {
         values: immediacy,
-        submit: async function(chats: string) {
+        submit: async (chats: string) => {
           const ok = (await japi('patch', '/profile-info', { chats })).ok;
-          if (ok) this.currentValue = chats;
+          if (ok) patchProfileInfo({ chats });
           return ok;
         },
       }
@@ -1045,9 +1029,9 @@ const notificationSettingsOptionGroups: OptionGroup<OptionGroupButtons>[] = [
     input: {
       buttons: {
         values: immediacy,
-        submit: async function(intros: string) {
+        submit: async (intros: string) => {
           const ok = (await japi('patch', '/profile-info', { intros })).ok;
-          if (ok) this.currentValue = intros;
+          if (ok) patchProfileInfo({ intros });
           return ok;
         },
       }
@@ -1072,6 +1056,8 @@ const deletionOptionGroups: OptionGroup<OptionGroupTextShort>[] = [
 
           await sessionPersonUuid(null);
           await sessionToken(null);
+          await lastPath(null);
+          resetUserScopedClientState();
           setSignedInUser(undefined);
 
           navigationContainerRef.reset({ routes: [ { name: 'Welcome' } ]});
@@ -1095,6 +1081,8 @@ const deactivationOptionGroups: OptionGroup<OptionGroupNone>[] = [
           if (ok) {
             await sessionPersonUuid(null);
             await sessionToken(null);
+            await lastPath(null);
+            resetUserScopedClientState();
             setSignedInUser(undefined);
 
             navigationContainerRef.reset({ routes: [ { name: 'Welcome' } ]});
@@ -1355,18 +1343,16 @@ const searchTwoWayBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         values: [
           ...yourPartnersGenderOptionGroup.input.checkChips.values,
         ],
-        submit: async function(gender: string[]) {
+        submit: async (gender: string[]) => {
           const go = async () => {
             const ok = (await japi('post', '/search-filter', { gender })).ok;
-            if (ok) {
-              this.values = newCheckChipValues(this.values, gender);
-            }
+            if (ok) patchSearchFilters({ gender });
             return ok;
           };
 
           if (gender.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, gender);
+            patchSearchFilters({ gender });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1394,7 +1380,7 @@ const searchTwoWayBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         unitsLabel: 'km',
         addPlusAtMax: true,
         scale: LOGARITHMIC_SCALE,
-        submit: async function(furthestDistance: number | null) {
+        submit: async (furthestDistance: number | null) => {
           const go = async () => {
             const ok = (
               await japi(
@@ -1406,7 +1392,7 @@ const searchTwoWayBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
             return ok;
           };
           searchQueue.addTask(go);
-          this.currentValue = furthestDistance;
+          patchSearchFilters({ furthest_distance: furthestDistance });
           return true;
         },
       },
@@ -1427,25 +1413,16 @@ const searchTwoWayBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         sliderMin: 18,
         sliderMax: 99,
         unitsLabel: 'years',
-        submit: async function(sliderMin: number | null, sliderMax: number | null) {
+        submit: async (sliderMin: number | null, sliderMax: number | null) => {
+          const age = { min_age: sliderMin, max_age: sliderMax };
           const go = async () => {
             const ok = (
-              await japi(
-                'post',
-                '/search-filter',
-                {
-                  age: {
-                    min_age: sliderMin,
-                    max_age: sliderMax,
-                  }
-                }
-              )
+              await japi('post', '/search-filter', { age })
             ).ok;
             return ok;
           };
           searchQueue.addTask(go);
-          this.currentMin = sliderMin;
-          this.currentMax = sliderMax;
+          patchSearchFilters({ age });
           return true;
         },
       }
@@ -1464,15 +1441,15 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...orientations.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(orientation: string[]) {
+        submit: async (orientation: string[]) => {
           const go = async () => {
             const ok = (await japi('post', '/search-filter', { orientation })).ok;
-            if (ok) this.values = newCheckChipValues(this.values, orientation);
+            if (ok) patchSearchFilters({ orientation });
             return ok;
           };
           if (orientation.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, orientation);
+            patchSearchFilters({ orientation });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1491,16 +1468,16 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...ethnicities.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(ethnicity: string[]) {
+        submit: async (ethnicity: string[]) => {
           const go = async () => {
             const ok = (await japi('post', '/search-filter', { ethnicity })).ok;
-            if (ok) this.values = newCheckChipValues(this.values, ethnicity);
+            if (ok) patchSearchFilters({ ethnicity });
             return ok;
           };
 
           if (ethnicity.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, ethnicity);
+            patchSearchFilters({ ethnicity });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1524,25 +1501,16 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         sliderMin: 50,
         sliderMax: 220,
         unitsLabel: 'cm',
-        submit: async function(sliderMin: number | null, sliderMax: number | null) {
+        submit: async (sliderMin: number | null, sliderMax: number | null) => {
+          const height = { min_height_cm: sliderMin, max_height_cm: sliderMax };
           const go = async () => {
             const ok = (
-              await japi(
-                'post',
-                '/search-filter',
-                {
-                  height: {
-                    min_height_cm: sliderMin,
-                    max_height_cm: sliderMax,
-                  }
-                }
-              )
+              await japi('post', '/search-filter', { height })
             ).ok;
             return ok;
           };
           searchQueue.addTask(go);
-          this.currentMin = sliderMin;
-          this.currentMax = sliderMax;
+          patchSearchFilters({ height });
           return true;
         },
       },
@@ -1563,19 +1531,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
         values: [
           ...yesNo.map((x) => ({checked: true, label: x})),
         ],
-        submit: async function(hasAProfilePicture: string[]) {
+        submit: async (hasAProfilePicture: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { has_a_profile_picture: hasAProfilePicture }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, hasAProfilePicture);
+            if (ok) patchSearchFilters({ has_a_profile_picture: hasAProfilePicture });
             return ok;
           };
           if (hasAProfilePicture.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, hasAProfilePicture);
+            patchSearchFilters({ has_a_profile_picture: hasAProfilePicture });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1594,19 +1562,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...lookingFor.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(lookingFor: string[]) {
+        submit: async (lookingFor: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { looking_for: lookingFor }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, lookingFor);
+            if (ok) patchSearchFilters({ looking_for: lookingFor });
             return ok;
           };
           if (lookingFor.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, lookingFor);
+            patchSearchFilters({ looking_for: lookingFor });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1631,19 +1599,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...yesNo.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(smoking: string[]) {
+        submit: async (smoking: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { smoking }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, smoking);
+            if (ok) patchSearchFilters({ smoking });
             return ok;
           };
           if (smoking.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, smoking);
+            patchSearchFilters({ smoking });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1662,19 +1630,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...frequency.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(drinking: string[]) {
+        submit: async (drinking: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { drinking }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, drinking);
+            if (ok) patchSearchFilters({ drinking });
             return ok;
           };
           if (drinking.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, drinking);
+            patchSearchFilters({ drinking });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1699,19 +1667,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...yesNo.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(drugs: string[]) {
+        submit: async (drugs: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { drugs }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, drugs);
+            if (ok) patchSearchFilters({ drugs });
             return ok;
           };
           if (drugs.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, drugs);
+            patchSearchFilters({ drugs });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1730,19 +1698,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...yesNo.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(longDistance: string[]) {
+        submit: async (longDistance: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { long_distance: longDistance }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, longDistance);
+            if (ok) patchSearchFilters({ long_distance: longDistance });
             return ok;
           };
           if (longDistance.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, longDistance);
+            patchSearchFilters({ long_distance: longDistance });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1761,19 +1729,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...relationshipStatus.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(relationshipStatus: string[]) {
+        submit: async (relationshipStatus: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { relationship_status: relationshipStatus }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, relationshipStatus);
+            if (ok) patchSearchFilters({ relationship_status: relationshipStatus });
             return ok;
           };
           if (relationshipStatus.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, relationshipStatus);
+            patchSearchFilters({ relationship_status: relationshipStatus });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1798,19 +1766,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...yesNo.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(hasKids: string[]) {
+        submit: async (hasKids: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { has_kids: hasKids }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, hasKids);
+            if (ok) patchSearchFilters({ has_kids: hasKids });
             return ok;
           };
           if (hasKids.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, hasKids);
+            patchSearchFilters({ has_kids: hasKids });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1835,19 +1803,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...yesNoMaybe.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'}
         ],
-        submit: async function(wantsKids: string[]) {
+        submit: async (wantsKids: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { wants_kids: wantsKids }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, wantsKids);
+            if (ok) patchSearchFilters({ wants_kids: wantsKids });
             return ok;
           };
           if (wantsKids.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, wantsKids);
+            patchSearchFilters({ wants_kids: wantsKids });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1866,19 +1834,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...frequency.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(exercise: string[]) {
+        submit: async (exercise: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { exercise }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, exercise);
+            if (ok) patchSearchFilters({ exercise });
             return ok;
           };
           if (exercise.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, exercise);
+            patchSearchFilters({ exercise });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1903,19 +1871,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...religions.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(religion: string[]) {
+        submit: async (religion: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { religion }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, religion);
+            if (ok) patchSearchFilters({ religion });
             return ok;
           };
           if (religion.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, religion);
+            patchSearchFilters({ religion });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1934,19 +1902,19 @@ const searchOtherBasicsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
           ...starSigns.map((x) => ({checked: true, label: x})),
           {checked: true, label: 'Unanswered'},
         ],
-        submit: async function(starSign: string[]) {
+        submit: async (starSign: string[]) => {
           const go = async () => {
             const ok = (await japi(
               'post',
               '/search-filter',
               { star_sign: starSign }
             )).ok;
-            if (ok) this.values = newCheckChipValues(this.values, starSign);
+            if (ok) patchSearchFilters({ star_sign: starSign });
             return ok;
           };
           if (starSign.length) {
             searchQueue.addTask(go);
-            this.values = newCheckChipValues(this.values, starSign);
+            patchSearchFilters({ star_sign: starSign });
             return true;
           } else {
             return await searchQueue.addTask(go);
@@ -1971,7 +1939,7 @@ const searchInteractionsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(peopleMessaged: string) {
+        submit: async (peopleMessaged: string) => {
           const go = async () => {
             const ok = (await japi(
               'post',
@@ -1981,7 +1949,7 @@ const searchInteractionsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
             return ok;
           };
           searchQueue.addTask(go);
-          this.currentValue = peopleMessaged;
+          patchSearchFilters({ people_you_messaged: peopleMessaged });
           return true;
         }
       }
@@ -2001,7 +1969,7 @@ const searchInteractionsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(peopleSkipped: string) {
+        submit: async (peopleSkipped: string) => {
           const go = async () => {
             const ok = (await japi(
               'post',
@@ -2011,7 +1979,7 @@ const searchInteractionsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
             return ok;
           };
           searchQueue.addTask(go);
-          this.currentValue = peopleSkipped;
+          patchSearchFilters({ people_you_skipped: peopleSkipped });
           return true;
         }
       }
@@ -2020,6 +1988,40 @@ const searchInteractionsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
 ];
 
 const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
+  {
+    title: 'Public Profile',
+    Icon: ({ color = 'black' }) => (
+      <FontAwesomeIcon
+        icon={faGlobe}
+        size={14}
+        style={{ color }}
+      />
+    ),
+    description: () => (
+      <DefaultText style={descriptionStyle.style}>
+        With this option set to ‘Yes’, people who aren’t signed into Duolicious
+        can view your profile. While ‘Public Profile’ is ‘Yes’, it overrides
+        ‘Verification Level’ and ‘Hide Me From Strangers’, so those settings
+        won’t apply.
+      </DefaultText>
+    ),
+    input: {
+      buttons: {
+        values: yesNo,
+        submit: async (publicProfile: string) => {
+          const ok = (
+            await japi(
+              'patch',
+              '/profile-info',
+              { public_profile: publicProfile }
+            )
+          ).ok;
+          if (ok) patchProfileInfo({ public_profile: publicProfile });
+          return ok;
+        },
+      }
+    },
+  },
   {
     title: 'Verification Level',
     Icon: ({ color = 'black' }) => <VerificationBadge
@@ -2030,7 +2032,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: verificationLevel,
-        submit: async function(verificationLevel: string) {
+        submit: async (verificationLevel: string) => {
           const ok = (
             await japi(
               'patch',
@@ -2038,51 +2040,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
               { verification_level: verificationLevel }
             )
           ).ok;
-          if (ok) this.currentValue = verificationLevel;
-          return ok;
-        },
-      }
-    },
-  },
-  {
-    title: 'Browse Invisibly',
-    Icon: ({ color = 'black' }) => (
-      <FontAwesomeIcon
-        icon={faGhost}
-        size={14}
-        style={{ color }}
-      />
-    ),
-    description: () => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [signedInUser] = useSignedInUser();
-
-      return (
-        <DefaultText style={descriptionStyle.style}>
-          With this option set to ‘Yes’, people won’t see that you visited their
-          profile.
-          {!signedInUser?.hasGold && ' Unlock this feature with Gold.'}
-        </DefaultText>
-      )
-    },
-    input: {
-      buttons: {
-        values: yesNo,
-        submit: async function(browseInvisibly: string) {
-          const { hasGold = false } = getSignedInUser() ?? {};
-          if (!hasGold) {
-            showPointOfSale('blocked');
-            return false;
-          }
-
-          const ok = (
-            await japi(
-              'patch',
-              '/profile-info',
-              { browse_invisibly: browseInvisibly }
-            )
-          ).ok;
-          if (ok) this.currentValue = browseInvisibly;
+          if (ok) patchProfileInfo({ verification_level: verificationLevel });
           return ok;
         },
       }
@@ -2115,7 +2073,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(hideMeFromStrangers: string) {
+        submit: async (hideMeFromStrangers: string) => {
           const { hasGold = false } = getSignedInUser() ?? {};
           if (!hasGold) {
             showPointOfSale('blocked');
@@ -2129,7 +2087,51 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
               { hide_me_from_strangers: hideMeFromStrangers }
             )
           ).ok;
-          if (ok) this.currentValue = hideMeFromStrangers;
+          if (ok) patchProfileInfo({ hide_me_from_strangers: hideMeFromStrangers });
+          return ok;
+        },
+      }
+    },
+  },
+  {
+    title: 'Browse Invisibly',
+    Icon: ({ color = 'black' }) => (
+      <FontAwesomeIcon
+        icon={faGhost}
+        size={14}
+        style={{ color }}
+      />
+    ),
+    description: () => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [signedInUser] = useSignedInUser();
+
+      return (
+        <DefaultText style={descriptionStyle.style}>
+          With this option set to ‘Yes’, people won’t see that you visited their
+          profile.
+          {!signedInUser?.hasGold && ' Unlock this feature with Gold.'}
+        </DefaultText>
+      )
+    },
+    input: {
+      buttons: {
+        values: yesNo,
+        submit: async (browseInvisibly: string) => {
+          const { hasGold = false } = getSignedInUser() ?? {};
+          if (!hasGold) {
+            showPointOfSale('blocked');
+            return false;
+          }
+
+          const ok = (
+            await japi(
+              'patch',
+              '/profile-info',
+              { browse_invisibly: browseInvisibly }
+            )
+          ).ok;
+          if (ok) patchProfileInfo({ browse_invisibly: browseInvisibly });
           return ok;
         },
       }
@@ -2160,7 +2162,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(showMyAge: string) {
+        submit: async (showMyAge: string) => {
           const { hasGold = false } = getSignedInUser() ?? {};
           if (!hasGold) {
             showPointOfSale('blocked');
@@ -2174,7 +2176,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
               { show_my_age: showMyAge }
             )
           ).ok;
-          if (ok) this.currentValue = showMyAge;
+          if (ok) patchProfileInfo({ show_my_age: showMyAge });
           return ok;
         },
       }
@@ -2205,7 +2207,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
     input: {
       buttons: {
         values: yesNo,
-        submit: async function(showMyLocation: string) {
+        submit: async (showMyLocation: string) => {
           const { hasGold = false } = getSignedInUser() ?? {};
           if (!hasGold) {
             showPointOfSale('blocked');
@@ -2219,7 +2221,7 @@ const privacySettingsOptionGroups: OptionGroup<OptionGroupInputs>[] = [
               { show_my_location: showMyLocation }
             )
           ).ok;
-          if (ok) this.currentValue = showMyLocation;
+          if (ok) patchProfileInfo({ show_my_location: showMyLocation });
           return ok;
         },
       }

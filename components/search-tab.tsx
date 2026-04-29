@@ -535,7 +535,7 @@ const LowAnswersBanner = ({ navigation }: { navigation: any }) => {
         const r = await japi("get", "/profile-info");
         if (r.ok) setCountAnswers(r.json?.count_answers ?? 0);
       })();
-    }, [])
+    }, []),
   );
 
   if (countAnswers === null || countAnswers >= 20) return null;
@@ -545,9 +545,9 @@ const LowAnswersBanner = ({ navigation }: { navigation: any }) => {
       <Pressable
         onPress={() => navigation.getParent()?.navigate("Q&A")}
         style={{
-          backgroundColor: '#fff3cd',
+          backgroundColor: "#fff3cd",
           borderBottomWidth: 1,
-          borderColor: '#ffc107',
+          borderColor: "#ffc107",
           paddingHorizontal: 16,
           paddingVertical: 10,
           flexDirection: "row",
@@ -555,7 +555,11 @@ const LowAnswersBanner = ({ navigation }: { navigation: any }) => {
           gap: 8,
         }}
       >
-        <Ionicons name="chatbubble-ellipses-outline" size={18} color="#856404" />
+        <Ionicons
+          name="chatbubble-ellipses-outline"
+          size={18}
+          color="#856404"
+        />
         <DefaultText style={{ color: "#856404", flex: 1, fontSize: 13 }}>
           Answer more Q&A questions to improve your matches ({countAnswers}/20
           answered)
@@ -590,6 +594,10 @@ const SearchScreen_ = ({ navigation }) => {
     const refresh = listRef?.current?.refresh;
     refresh && refresh();
   }, []);
+
+  useEffect(() => {
+    return listen("search-refresh-requested", onPressRefresh);
+  }, [onPressRefresh]);
 
   const onPressOptions = useCallback(() => {
     navigation.navigate("Search Filter Screen", {
