@@ -93,15 +93,17 @@ function WebNavigator<Navigation>({
           justifyContent: 'center',
         }}
       >
-        <View style={{ height: '100%', flex: 1, minWidth: 280 }}>
-          <WebBar
-            state={state}
-            navigation={navigation}
-            tabBarStyle={tabBarStyle}
-            descriptors={descriptors}
-          />
-        </View>
-        <View style={{ height: '100%', flex: 3, maxWidth: 600 }}>
+        {windowWidth >= 768 &&
+          <View style={{ height: '100%', flex: 1, minWidth: 280 }}>
+            <WebBar
+              state={state}
+              navigation={navigation}
+              tabBarStyle={tabBarStyle}
+              descriptors={descriptors}
+            />
+          </View>
+        }
+        <View style={{ height: '100%', flex: 3, maxWidth: windowWidth < 768 ? undefined : 600 }}>
           {state.routes.map((route, i) => {
             return (
               <View
@@ -109,9 +111,9 @@ function WebNavigator<Navigation>({
                 style={[
                   StyleSheet.absoluteFill,
                   {
-                    paddingHorizontal: 20,
+                    paddingHorizontal: windowWidth < 768 ? 0 : 20,
                     display: i === state.index ? 'flex' : 'none',
-                    borderRightWidth: 1,
+                    borderRightWidth: windowWidth < 768 ? 0 : 1,
                     borderColor: 'black',
                   },
                 ]}

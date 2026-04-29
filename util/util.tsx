@@ -19,7 +19,7 @@ import * as _ from 'lodash';
 
 const isMobileWeb = () => {
   const re = /(android|iphone|ipod|iemobile|blackberry|webos|symbian)/i;
-  return re.test(window.navigator.userAgent)
+  return re.test(window.navigator.userAgent) || window.innerWidth < 768;
 };
 
 const isMobile = () => {

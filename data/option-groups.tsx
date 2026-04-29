@@ -1299,8 +1299,17 @@ const createAccountOptionGroups: OptionGroup<OptionGroupInputs>[] = [
               ]
             });
           } else {
+            // Send new users to Q&A first so they answer a few questions
+            // before browsing — improves early match quality
             navigationContainerRef.reset({
-              routes: [ { name: 'Home' } ]
+              routes: [
+                {
+                  name: 'Home',
+                  state: {
+                    routes: [ { name: 'Q&A' } ]
+                  }
+                }
+              ]
             });
           }
 
