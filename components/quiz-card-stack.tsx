@@ -4,6 +4,7 @@ import {
   StyleSheet,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import {
   createRef,
@@ -584,8 +585,10 @@ const QuizCardStack_ = ({
     ).start();
   }, [JSON.stringify(cards.map((card) => card.questionNumber))]);
 
+  const { height: windowHeight } = useWindowDimensions();
+
   return (
-    <View style={styles.stackContainerStyle}>
+    <View style={[styles.stackContainerStyle, { maxHeight: windowHeight * 0.50 }]}>
       {!onScreenCards.length && <NoMoreCards/>}
       {
         cards.map((card, i) => {

@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { ButtonWithCenteredText } from './button/centered-text';
 import { QuizCardStack } from './quiz-card-stack';
+import { DuoliciousTopNavBar } from './top-nav-bar';
 import {
   Check,
   FastForward,
@@ -47,6 +48,7 @@ const QuizTab = () => {
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
+      <DuoliciousTopNavBar />
       <View style={styles.safeAreaView}>
         <QuizCardStack
           innerRef={stackRef}

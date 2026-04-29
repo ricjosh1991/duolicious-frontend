@@ -17,7 +17,6 @@ import {
 import { StatelessCheckBox } from './check-box';
 import { BaseQuizCard } from './base-quiz-card';
 import { DefaultText } from './default-text';
-import { LinearGradient } from 'expo-linear-gradient';
 import { X, Check, FastForward } from "react-native-feather";
 import { Skeleton } from './skeleton';
 import { japi } from '../api/api';
@@ -331,37 +330,12 @@ const NonInteractiveQuizCard = ({children, ...props}) => {
                 {questionNumber} | {topic}
               </DefaultText>
             }
-            {questionNumber && topic &&
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  gap: 3,
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <DefaultText
-                  style={{
-                    fontFamily: 'TruenoBold',
-                    fontSize: 16,
-                    color: appTheme.quizCardColor,
-                    textAlign: 'right',
-                  }}
-                >
-                  Duolicious
-                </DefaultText>
-                <Logo14
-                  size={14 * 2}
-                  color={appTheme.quizCardColor}
-                  rectSize={0.3}
-                />
-              </View>
-            }
           </View>
           <View
             style={{
-              margin: 20,
+              marginHorizontal: 20,
+              marginTop: 10,
+              marginBottom: 10,
               flexGrow: 1,
               justifyContent: 'center',
               minWidth: 150,
@@ -376,7 +350,7 @@ const NonInteractiveQuizCard = ({children, ...props}) => {
             >
               {showTutorial && questionNumber === 1 &&
                 <DefaultText style={{fontSize: adjustedFontSize * 0.8}}>
-                  👋 Welcome to Duolicious Q&A, where we pick your brain in the
+                  👋 Welcome to ClearDate Q&A, where we pick your brain in the
                   quest to unearth your perfect match! Let's start with an easy
                   one:
                   {'\n\n'}
@@ -446,39 +420,21 @@ const NonInteractiveQuizCard = ({children, ...props}) => {
               }
             </DefaultText>
           </View>
+          {extraChildren}
           {showAnswerPubliclyCheckBox &&
             <StatelessCheckBox
               value={answerPubliclyValue}
               labelPosition="left"
               containerStyle={{
-                marginTop: 0,
-                marginBottom: 25,
-                marginRight: 30,
+                marginTop: 8,
+                marginBottom: 12,
+                marginRight: 20,
                 alignSelf: 'flex-end',
               }}
               onValueChange={onChangeAnswerPublicly}
             >
               Answer Publicly
             </StatelessCheckBox>
-          }
-          {extraChildren}
-          {!extraChildren &&
-            <LinearGradient
-              locations={[
-                0.0,
-                0.15,
-                1.0,
-              ]}
-              colors={[
-                'transparent',
-                'rgba(0, 0, 0, 0.85)',
-                'rgba(0, 0, 0, 1.0)',
-              ]}
-              style={{
-                width: '100%',
-                height: 95,
-              }}
-            />
           }
         </ImageBackground>
       </View>

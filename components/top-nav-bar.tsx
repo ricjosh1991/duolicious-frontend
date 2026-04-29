@@ -76,7 +76,7 @@ const DuoliciousTopNavBar = (props) => {
             fontSize: 22,
           }}
         >
-          Duolicious
+          ClearDate
         </DefaultText>
         </>
       }
