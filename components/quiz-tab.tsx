@@ -1,238 +1,128 @@
 import {
-  View,
+  LayoutAnimation,
+  Platform,
   SafeAreaView,
   StyleSheet,
+  UIManager,
+  View,
 } from 'react-native';
 import {
+  useCallback,
+  useEffect,
   useRef,
+  useState,
 } from 'react';
-import { ButtonWithCenteredText } from './button/centered-text';
-import { QuizCardStack } from './quiz-card-stack';
+import { DefaultText } from './default-text';
 import { DuoliciousTopNavBar } from './top-nav-bar';
-import {
-  Check,
-  FastForward,
-  Rewind,
-  X,
-} from "react-native-feather";
+import { api, japi } from '../api/api';
+import { quizQueue } from '../api/queue';
+import { QuizCard, Question } from './quiz-card';
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const WINDOW_SIZE = 3;
+const LOAD_AHEAD = 6;
+
+const fetchQuestions = async (offset: number): Promise<Question[]> => {
+  const response = await api('GET', `/next-questions?n=10&o=${offset}`);
+  if (!response.json) return [];
+  return response.json.map((q: any) => ({
+    id: q.id,
+    question: q.question,
+    topic: q.topic,
+  }));
+};
 
 const QuizTab = () => {
-  const stackRef = useRef<any>(undefined);
+  const [queue, setQueue] = useState<Question[]>([]);
+  const [publicMap, setPublicMap] = useState<Record<number, boolean>>({});
+  const offsetRef = useRef(0);
+  const loadingRef = useRef(false);
 
-  const inputElementsRef = useRef<any>(undefined);
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    const next = await fetchQuestions(offsetRef.current);
+    offsetRef.current += next.length;
+    setQueue(prev => [...prev, ...next]);
+    loadingRef.current = false;
+  }, []);
 
-  const onPressUndo      = () => { stackRef.current.undo() };
-  const onPressNo        = () => { stackRef.current.no() };
-  const onPressYes       = () => { stackRef.current.yes() };
-  const onPressSkip      = () => { stackRef.current.skip() };
+  useEffect(() => {
+    loadMore();
+  }, []);
 
-  const onTopCardChanged = () => {
-    inputElementsRef.current.setIsUndoEnabled(
-      !!(stackRef.current && stackRef.current.canUndo())
+  const visible = queue.slice(0, WINDOW_SIZE);
+
+  const onAnswer = useCallback((id: number, value: boolean | null) => {
+    const isPublic = publicMap[id] ?? true;
+
+    quizQueue.addTask(() =>
+      japi('post', '/answer', { question_id: id, answer: value, public: isPublic })
     );
 
-    inputElementsRef.current.setIsSwipeEnabled(
-      !!(stackRef.current && stackRef.current.canSwipe())
-    );
-  };
+    LayoutAnimation.configureNext({
+      duration: 280,
+      create: { type: 'easeInEaseOut', property: 'opacity' },
+      update: { type: 'easeInEaseOut' },
+      delete: { type: 'easeInEaseOut', property: 'opacity' },
+    });
 
-  const onSwipe = (direction: string) => {
-    if (inputElementsRef.current === undefined) return;
-    if (stackRef.current === undefined) return;
-    if (!stackRef.current.canSwipe()) return;
+    setQueue(prev => {
+      const next = prev.filter(q => q.id !== id);
+      if (next.length < LOAD_AHEAD) loadMore();
+      return next;
+    });
+  }, [publicMap, loadMore]);
 
-    if (direction === 'left' ) inputElementsRef.current.doNoPressAnimation();
-    if (direction === 'right') inputElementsRef.current.doYesPressAnimation();
-    if (direction === 'down' ) inputElementsRef.current.doSkipPressAnimation();
-  };
+  const onTogglePublic = useCallback((id: number) => {
+    setPublicMap(prev => ({ ...prev, [id]: !(prev[id] ?? true) }));
+  }, []);
 
   return (
-    <SafeAreaView style={styles.safeAreaView}>
+    <SafeAreaView style={styles.container}>
       <DuoliciousTopNavBar />
-      <View style={styles.safeAreaView}>
-        <QuizCardStack
-          innerRef={stackRef}
-          onTopCardChanged={onTopCardChanged}
-          onSwipe={onSwipe}
-        />
-        <UndoNoYesSkip
-          innerRef={inputElementsRef}
-          onPressNo={onPressNo}
-          onPressYes={onPressYes}
-          onPressSkip={onPressSkip}
-          onPressUndo={onPressUndo}
-        />
+      <View style={styles.feed}>
+        {visible.map((q, i) => (
+          <QuizCard
+            key={q.id}
+            question={q}
+            position={i}
+            isPublic={publicMap[q.id] ?? true}
+            onAnswer={onAnswer}
+            onTogglePublic={onTogglePublic}
+          />
+        ))}
+        {queue.length === 0 && (
+          <DefaultText style={styles.emptyText}>
+            No more questions right now
+          </DefaultText>
+        )}
       </View>
     </SafeAreaView>
   );
 };
 
-const UndoNoYesSkip = (props) => {
-  const undoButtonRef = useRef<any>(undefined);
-  const noButtonRef = useRef<any>(undefined);
-  const yesButtonRef = useRef<any>(undefined);
-  const skipButtonRef = useRef<any>(undefined);
-
-  const {
-    innerRef,
-    onPressUndo,
-    onPressNo,
-    onPressYes,
-    onPressSkip,
-  } = props;
-
-  class Api {
-    setIsUndoEnabled(value: boolean) {
-      if (undoButtonRef.current) undoButtonRef.current.isEnabled(value);
-    }
-
-    setIsSwipeEnabled(value: boolean) {
-      if (noButtonRef.current) noButtonRef.current.isEnabled(value);
-      if (yesButtonRef.current) yesButtonRef.current.isEnabled(value);
-      if (skipButtonRef.current) skipButtonRef.current.isEnabled(value);
-    }
-
-    doYesPressAnimation() {
-      if (yesButtonRef.current) {
-        yesButtonRef.current.doPressAnimation();
-      }
-    }
-
-    doNoPressAnimation() {
-      if (noButtonRef.current) {
-        noButtonRef.current.doPressAnimation();
-      }
-    }
-
-    doSkipPressAnimation() {
-      if (skipButtonRef.current) {
-        skipButtonRef.current.doPressAnimation();
-      }
-    }
-  };
-
-  innerRef.current = new Api();
-
-  const buttonStyle = {
-    width: 60,
-    height: 60,
-    aspectRatio: 1,
-    margin: 10,
-  };
-
-  return (
-    <View
-      style={{
-        width: '100%',
-        maxWidth: 600,
-        alignSelf: 'center',
-        position: 'absolute',
-        bottom: 0,
-        flexGrow: 0,
-        flexShrink: 1,
-        paddingLeft: 15,
-        paddingRight: 15,
-        paddingBottom: 10,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        ...props.style,
-      }}
-    >
-      <ButtonWithCenteredText
-        innerRef={undoButtonRef}
-        className="pressable"
-        containerStyle={buttonStyle}
-        secondary={true}
-        onPress={onPressUndo}
-        backgroundColor="black"
-        borderColor="white"
-        borderWidth={2}
-        extraChildren={
-          <Rewind
-            stroke="white"
-            strokeWidth={4}
-            height={30}
-            width={30}
-            style={{
-              marginTop: 3,
-              marginLeft: -3,
-            }}
-          />
-        }
-      />
-      <ButtonWithCenteredText
-        innerRef={noButtonRef}
-        className="pressable"
-        containerStyle={buttonStyle}
-        onPress={onPressNo}
-        backgroundColor="#70f"
-        borderColor="white"
-        borderWidth={2}
-        extraChildren={
-          <X
-            stroke="white"
-            strokeWidth={4}
-            width={30}
-            height={30}
-            style={{
-              marginTop: 3,
-            }}
-          />
-        }
-      />
-      <ButtonWithCenteredText
-        innerRef={yesButtonRef}
-        className="pressable"
-        containerStyle={buttonStyle}
-        onPress={onPressYes}
-        backgroundColor="#70f"
-        borderColor="white"
-        borderWidth={2}
-        extraChildren={
-        <Check
-          stroke="white"
-          strokeWidth={4}
-          width={30}
-          height={30}
-          style={{
-            marginTop: 3,
-          }}
-        />
-        }
-      />
-      <ButtonWithCenteredText
-        innerRef={skipButtonRef}
-        className="pressable"
-        containerStyle={buttonStyle}
-        secondary={true}
-        onPress={onPressSkip}
-        backgroundColor="black"
-        borderColor="white"
-        borderWidth={2}
-        extraChildren={
-          <FastForward
-            stroke="white"
-            strokeWidth={4}
-            height={30}
-            width={30}
-            style={{
-              marginTop: 3,
-              marginRight: -3,
-            }}
-          />
-        }
-      />
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
-  safeAreaView: {
+  container: {
     flex: 1,
-    overflow: 'hidden',
-  }
+  },
+  feed: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'flex-start',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#aaa',
+    marginTop: 40,
+    fontSize: 14,
+  },
 });
 
-export {
-  QuizTab,
-}
+export { QuizTab };
