@@ -745,7 +745,7 @@ const FeedTab = () => {
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
-      <DuoliciousTopNavBar>
+      <DuoliciousTopNavBar screenTitle="Feed">
         {Platform.OS === 'web' &&
           <TopNavBarButton
             onPress={onPressRefresh}

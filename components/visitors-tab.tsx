@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { memo, useCallback, useEffect, useState, useRef } from 'react';
 import { DefaultText } from './default-text';
-import { TopNavBar } from './top-nav-bar';
+import { DuoliciousTopNavBar } from './top-nav-bar';
 import { useScrollbar } from './navigation/scroll-bar-hooks';
 import { Avatar } from './avatar';
 import { commonStyles } from '../styles';
@@ -510,16 +510,7 @@ const VisitorsTab = () => {
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
-      <TopNavBar>
-        <DefaultText
-          style={{
-            fontWeight: '700',
-            fontSize: 20,
-          }}
-        >
-          Visitors
-        </DefaultText>
-      </TopNavBar>
+      <DuoliciousTopNavBar screenTitle="Visitors" />
       {!keys &&
         <View style={{height: '100%', justifyContent: 'center', alignItems: 'center'}}>
           <ActivityIndicator size="large" color={appTheme.brandColor} />

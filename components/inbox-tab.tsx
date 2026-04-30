@@ -14,7 +14,7 @@ import {
 } from 'react';
 import Animated from 'react-native-reanimated';
 import { useConversation } from '../chat/application-layer/hooks/conversation';
-import { TopNavBar } from './top-nav-bar';
+import { DuoliciousTopNavBar } from './top-nav-bar';
 import { IntrosItem, ChatsItem } from './inbox-item';
 import { DefaultText } from './default-text';
 import { ButtonGroup } from './button-group';
@@ -227,7 +227,6 @@ const InboxTabNavBar = ({
   showArchive,
   onPressArchiveButton,
 }) => {
-  const { appTheme } = useAppTheme();
   const [isOnline, setIsOnline] = useState(false);
 
   useLayoutEffect(() => {
@@ -239,28 +238,14 @@ const InboxTabNavBar = ({
   }, []);
 
   return (
-    <TopNavBar>
-      <View>
-        <DefaultText
-          style={{
-            fontWeight: '700',
-            fontSize: 20,
-          }}
-        >
-          {'Inbox' + (showArchive ? ' (Archive)' : '')}
-        </DefaultText>
-        {!isOnline &&
-          <ActivityIndicator
-            size="small"
-            color={appTheme.brandColor}
-            style={{
-              position: 'absolute',
-              right: -40,
-              top: 3,
-            }}
-          />
-        }
-      </View>
+    <DuoliciousTopNavBar screenTitle={showArchive ? 'Inbox (Archive)' : 'Inbox'}>
+      {!isOnline &&
+        <ActivityIndicator
+          size="small"
+          color="white"
+          style={{ position: 'absolute', left: 16, top: 12 }}
+        />
+      }
       <TopNavBarButton
         onPress={onPressArchiveButton}
         iconName={showArchive ? 'chatbubbles-outline' : 'file-tray-full-outline'}
@@ -268,7 +253,7 @@ const InboxTabNavBar = ({
         secondary={false}
         label={showArchive ? "Inbox" : "Archive"}
       />
-    </TopNavBar>
+    </DuoliciousTopNavBar>
   );
 };
 

@@ -130,7 +130,7 @@ const WebSplashScreen = ({loading}) => {
           alignItems: 'center',
           flexDirection: 'column',
           justifyContent: 'space-around',
-          backgroundColor: '#70f',
+          backgroundColor: '#F59E0B',
           opacity: opacity,
           zIndex: 999,
         }}
@@ -326,18 +326,26 @@ const App = () => {
 
   const loadFonts = useCallback(async () => {
     await Font.loadAsync({
-      Trueno: require('./assets/fonts/TruenoRound.otf'),
-      TruenoBold: require('./assets/fonts/TruenoRoundBd.otf'),
+      // Keep legacy aliases pointing to Poppins so existing fontFamily
+      // references across the codebase work without a mass find-and-replace.
+      Trueno:              require('@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf'),
+      TruenoBold:          require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
+      MontserratThin:      require('@expo-google-fonts/poppins/100Thin/Poppins_100Thin.ttf'),
+      MontserratExtraLight:require('@expo-google-fonts/poppins/200ExtraLight/Poppins_200ExtraLight.ttf'),
+      MontserratLight:     require('@expo-google-fonts/poppins/300Light/Poppins_300Light.ttf'),
+      MontserratRegular:   require('@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf'),
+      MontserratMedium:    require('@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf'),
+      MontserratSemiBold:  require('@expo-google-fonts/poppins/600SemiBold/Poppins_600SemiBold.ttf'),
+      MontserratBold:      require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
+      MontserratExtraBold: require('@expo-google-fonts/poppins/800ExtraBold/Poppins_800ExtraBold.ttf'),
+      MontserratBlack:     require('@expo-google-fonts/poppins/900Black/Poppins_900Black.ttf'),
 
-      MontserratBlack: require('./assets/fonts/montserrat/static/Montserrat-Black.ttf'),
-      MontserratBold: require('./assets/fonts/montserrat/static/Montserrat-Bold.ttf'),
-      MontserratExtraBold: require('./assets/fonts/montserrat/static/Montserrat-ExtraBold.ttf'),
-      MontserratExtraLight: require('./assets/fonts/montserrat/static/Montserrat-ExtraLight.ttf'),
-      MontserratLight: require('./assets/fonts/montserrat/static/Montserrat-Light.ttf'),
-      MontserratMedium: require('./assets/fonts/montserrat/static/Montserrat-Medium.ttf'),
-      MontserratRegular: require('./assets/fonts/montserrat/static/Montserrat-Regular.ttf'),
-      MontserratSemiBold: require('./assets/fonts/montserrat/static/Montserrat-SemiBold.ttf'),
-      MontserratThin: require('./assets/fonts/montserrat/static/Montserrat-Thin.ttf'),
+      // Native Poppins names for new code
+      PoppinsRegular:   require('@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf'),
+      PoppinsMedium:    require('@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf'),
+      PoppinsSemiBold:  require('@expo-google-fonts/poppins/600SemiBold/Poppins_600SemiBold.ttf'),
+      PoppinsBold:      require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
+      PoppinsExtraBold: require('@expo-google-fonts/poppins/800ExtraBold/Poppins_800ExtraBold.ttf'),
     });
   }, []);
 

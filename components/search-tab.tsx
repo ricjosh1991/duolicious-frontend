@@ -526,7 +526,66 @@ const ListHeaderComponent = ({
   );
 };
 
-const LowAnswersBanner = ({ navigation }: { navigation: any }) => {
+const SearchGate = ({ navigation, countAnswers }: { navigation: any; countAnswers: number }) => {
+  const { appTheme } = useAppTheme();
+  const progress = Math.min(countAnswers / 20, 1);
+
+  return (
+    <View style={{
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 32,
+      gap: 16,
+    }}>
+      <Ionicons name="lock-closed" size={48} color={appTheme.brandColor} />
+      <DefaultText style={{ fontSize: 20, fontFamily: 'MontserratBold', textAlign: 'center' }}>
+        Search is locked
+      </DefaultText>
+      <DefaultText style={{ fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 }}>
+        Answer at least 20 Q&A questions so we can find your best matches.
+      </DefaultText>
+
+      <View style={{ width: '100%', gap: 6 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <DefaultText style={{ fontSize: 13, color: '#888' }}>Progress</DefaultText>
+          <DefaultText style={{ fontSize: 13, fontFamily: 'MontserratBold', color: appTheme.brandColor }}>
+            {countAnswers}/20
+          </DefaultText>
+        </View>
+        <View style={{ height: 8, backgroundColor: '#eee', borderRadius: 4, overflow: 'hidden' }}>
+          <View style={{
+            height: '100%',
+            borderRadius: 4,
+            backgroundColor: appTheme.brandColor,
+            width: `${progress * 100}%` as any,
+          }} />
+        </View>
+      </View>
+
+      <Pressable
+        onPress={() => navigation.getParent()?.navigate('Q&A')}
+        style={{
+          backgroundColor: appTheme.brandColor,
+          paddingHorizontal: 28,
+          paddingVertical: 14,
+          borderRadius: 10,
+          marginTop: 8,
+        }}
+      >
+        <DefaultText style={{ color: 'white', fontFamily: 'MontserratBold', fontSize: 15 }}>
+          Go answer Q&A →
+        </DefaultText>
+      </Pressable>
+    </View>
+  );
+};
+
+
+const SearchScreen_ = ({ navigation }) => {
+  const { hasClubs: initialHasClubs, selectedClub: initialSelectedClub } =
+    getStateFromClubItems(lastEvent<ClubItem[]>("updated-clubs"));
+
   const [countAnswers, setCountAnswers] = useState<number | null>(null);
 
   useFocusEffect(
@@ -537,42 +596,6 @@ const LowAnswersBanner = ({ navigation }: { navigation: any }) => {
       })();
     }, []),
   );
-
-  if (countAnswers === null || countAnswers >= 20) return null;
-
-  return (
-    <>
-      <Pressable
-        onPress={() => navigation.getParent()?.navigate("Q&A")}
-        style={{
-          backgroundColor: "#fff3cd",
-          borderBottomWidth: 1,
-          borderColor: "#ffc107",
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <Ionicons
-          name="chatbubble-ellipses-outline"
-          size={18}
-          color="#856404"
-        />
-        <DefaultText style={{ color: "#856404", flex: 1, fontSize: 13 }}>
-          Answer more Q&A questions to improve your matches ({countAnswers}/20
-          answered)
-        </DefaultText>
-        <Ionicons name="chevron-forward" size={16} color="white" />
-      </Pressable>
-    </>
-  );
-};
-
-const SearchScreen_ = ({ navigation }) => {
-  const { hasClubs: initialHasClubs, selectedClub: initialSelectedClub } =
-    getStateFromClubItems(lastEvent<ClubItem[]>("updated-clubs"));
 
   const listRef = useRef<any>(undefined);
 
@@ -627,7 +650,7 @@ const SearchScreen_ = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
-      <DuoliciousTopNavBar>
+      <DuoliciousTopNavBar screenTitle="Search">
         {Platform.OS === "web" && (
           <TopNavBarButton
             onPress={onPressRefresh}
@@ -667,8 +690,9 @@ const SearchScreen_ = ({ navigation }) => {
           />
         </View>
       </DuoliciousTopNavBar>
-      <LowAnswersBanner navigation={navigation} />
-      <DefaultFlatList
+      {countAnswers !== null && countAnswers < 20
+        ? <SearchGate navigation={navigation} countAnswers={countAnswers} />
+        : <DefaultFlatList
         key={
           // This is needed to trigger a re-render when the sticky header
           // indicies change. Without this, the header is blank on Android.
@@ -706,6 +730,7 @@ const SearchScreen_ = ({ navigation }) => {
         stickyHeaderIndices={hasClubs ? [0] : []}
         columnWrapperStyle={styles.listColumnWraperStyle}
       />
+      }
     </SafeAreaView>
   );
 };

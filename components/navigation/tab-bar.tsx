@@ -89,7 +89,7 @@ const Tab = ({ navigation, state, route, descriptors, index, numUnread }) => {
           label={label}
           isFocused={isFocused}
           numUnread={numUnread}
-          color={appTheme.secondaryColor}
+          color={isFocused ? appTheme.brandColor : appTheme.secondaryColor}
           backgroundColor={appTheme.primaryColor}
           indicatorColor={appTheme.primaryColor}
           indicatorBackgroundColor={appTheme.brandColor}
@@ -100,6 +100,7 @@ const Tab = ({ navigation, state, route, descriptors, index, numUnread }) => {
             textAlign: 'center',
             fontFamily: isFocused ? 'MontserratBold' : 'MontserratRegular',
             fontSize: 12,
+            color: isFocused ? appTheme.brandColor : appTheme.secondaryColor,
           }}
         >
           {label}

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   View,
   ViewStyle,
-} from 'react-native';
+} from "react-native";
 import {
   forwardRef,
   memo,
@@ -14,11 +14,11 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-} from 'react';
-import { DefaultText } from './default-text';
-import { RenderedHoc } from './rendered-hoc';
-import { FlashList, FlashListProps, FlashListRef } from '@shopify/flash-list';
-import { useAppTheme } from '../app-theme/app-theme';
+} from "react";
+import { DefaultText } from "./default-text";
+import { RenderedHoc } from "./rendered-hoc";
+import { FlashList, FlashListProps, FlashListRef } from "@shopify/flash-list";
+import { useAppTheme } from "../app-theme/app-theme";
 
 const styles = StyleSheet.create({
   activityIndicator: {
@@ -26,73 +26,71 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    fontFamily: 'Trueno',
-    margin: '20%',
-    textAlign: 'center'
+    fontFamily: "Trueno",
+    margin: "20%",
+    textAlign: "center",
   },
   emptyText: {
-    fontFamily: 'Trueno',
-    margin: '20%',
-    textAlign: 'center'
+    fontFamily: "Trueno",
+    margin: "20%",
+    textAlign: "center",
   },
   endText: {
-    fontFamily: 'TruenoBold',
-    fontSize: 16,
-    textAlign: 'center',
-    alignSelf: 'center',
+    fontFamily: "MontserratSemiBold",
+    fontSize: 15,
+    textAlign: "center",
+    alignSelf: "center",
     marginTop: 30,
     marginBottom: 30,
-    marginLeft: '15%',
-    marginRight: '15%',
+    marginLeft: "15%",
+    marginRight: "15%",
   },
   flatList: {
     paddingTop: 10,
-    alignItems: 'stretch',
-    width: '100%',
+    alignItems: "stretch",
+    width: "100%",
     maxWidth: 600,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
 });
 
-type Page<ItemT> = ItemT[] | 'fetching'
+type Page<ItemT> = ItemT[] | "fetching";
 
 type Book<ItemT> = {
-  pages: Page<ItemT>[]
-  isRefreshing: boolean
-  isError: boolean
+  pages: Page<ItemT>[];
+  isRefreshing: boolean;
+  isError: boolean;
 };
 
 type Books<ItemT> = {
-  [dataKey: string]: Book<ItemT>
+  [dataKey: string]: Book<ItemT>;
 };
 
 const pageToItems = <ItemT,>(page: Page<ItemT>): ItemT[] =>
-  page === 'fetching' ? [] : page;
+  page === "fetching" ? [] : page;
 
 const bookToItems = <ItemT,>(book: Book<ItemT>): ItemT[] =>
   book.isError ? [] : book.pages.flatMap(pageToItems);
 
-const isPageFetching = <ItemT,>(page: Page<ItemT>) =>
-  page === 'fetching';
+const isPageFetching = <ItemT,>(page: Page<ItemT>) => page === "fetching";
 
 const isBookFetching = <ItemT,>(book: Book<ItemT>) =>
   book.pages.length > 0 && isPageFetching(book.pages[book.pages.length - 1]);
 
-const isPageLast = <ItemT,>(page: Page<ItemT>) =>
-  page.length === 0;
+const isPageLast = <ItemT,>(page: Page<ItemT>) => page.length === 0;
 
 const isBookComplete = <ItemT,>(book: Book<ItemT>) =>
   book.isError ||
-  book.pages.length > 0 && isPageLast(book.pages[book.pages.length - 1] ?? []);
+  (book.pages.length > 0 &&
+    isPageLast(book.pages[book.pages.length - 1] ?? []));
 
 const isBookEmpty = <ItemT,>(book: Book<ItemT>) =>
   bookToItems(book).length === 0;
 
-const pageNumberToFetch = <ItemT,>(book: Book<ItemT>) =>
-  book.pages.length + 1;
+const pageNumberToFetch = <ItemT,>(book: Book<ItemT>) => book.pages.length + 1;
 
 const setBookFetching = <ItemT,>(book: Book<ItemT>): void => {
-  book.pages.push('fetching');
+  book.pages.push("fetching");
   book.isRefreshing = false;
   book.isError = false;
 };
@@ -123,7 +121,7 @@ const setBookRefreshing = <ItemT,>(book: Book<ItemT>): void => {
 
 const getBookOrDefault = <ItemT,>(
   books: Books<ItemT>,
-  dataKey: string
+  dataKey: string,
 ): Book<ItemT> =>
   books[dataKey] ?? { pages: [], isRefreshing: false, isError: false };
 
@@ -147,10 +145,7 @@ const setBookFetchedInBooks = <ItemT,>(
   setBookFetched(books[dataKey], page, index);
 };
 
-const setBookErrorInBooks = <ItemT,>(
-  books: Books<ItemT>,
-  dataKey: string,
-) => {
+const setBookErrorInBooks = <ItemT,>(books: Books<ItemT>, dataKey: string) => {
   books[dataKey] = getBookOrDefault(books, dataKey);
   setBookError(books[dataKey]);
 };
@@ -163,47 +158,45 @@ const setBookRefreshingInBooks = <ItemT,>(
   setBookRefreshing(books[dataKey]);
 };
 
-type DefaultFlatListProps<ItemT> =
-  Omit<
-    FlatListProps<ItemT> & {
-      emptyText?: string,
-      errorText?: string,
-      endText?: string,
-      endTextStyle?: StyleProp<ViewStyle>,
-      fetchPage: (pageNumber: number) => Promise<ItemT[] | null>,
-      hideListHeaderComponentWhenEmpty?: boolean,
-      hideListHeaderComponentWhenLoading?: boolean,
-      dataKey?: string,
-      disableRefresh?: boolean,
-      innerRef?: any,
-    },
-    | "ListEmptyComponent"
-    | "ListFooterComponent"
-    | "data"
-    | "onRefresh"
-    | "refreshing"
-  >;
+type DefaultFlatListProps<ItemT> = Omit<
+  FlatListProps<ItemT> & {
+    emptyText?: string;
+    errorText?: string;
+    endText?: string;
+    endTextStyle?: StyleProp<ViewStyle>;
+    fetchPage: (pageNumber: number) => Promise<ItemT[] | null>;
+    hideListHeaderComponentWhenEmpty?: boolean;
+    hideListHeaderComponentWhenLoading?: boolean;
+    dataKey?: string;
+    disableRefresh?: boolean;
+    innerRef?: any;
+  },
+  | "ListEmptyComponent"
+  | "ListFooterComponent"
+  | "data"
+  | "onRefresh"
+  | "refreshing"
+>;
 
-type DefaultFlashListProps<ItemT> =
-  Omit<
-    FlashListProps<ItemT> & {
-      emptyText?: string,
-      errorText?: string,
-      endText?: string,
-      endTextStyle?: StyleProp<ViewStyle>,
-      fetchPage: (pageNumber: number) => Promise<ItemT[] | null>,
-      hideListHeaderComponentWhenEmpty?: boolean,
-      hideListHeaderComponentWhenLoading?: boolean,
-      dataKey?: string,
-      disableRefresh?: boolean,
-      innerRef?: any,
-    },
-    | "ListEmptyComponent"
-    | "ListFooterComponent"
-    | "data"
-    | "onRefresh"
-    | "refreshing"
-  >;
+type DefaultFlashListProps<ItemT> = Omit<
+  FlashListProps<ItemT> & {
+    emptyText?: string;
+    errorText?: string;
+    endText?: string;
+    endTextStyle?: StyleProp<ViewStyle>;
+    fetchPage: (pageNumber: number) => Promise<ItemT[] | null>;
+    hideListHeaderComponentWhenEmpty?: boolean;
+    hideListHeaderComponentWhenLoading?: boolean;
+    dataKey?: string;
+    disableRefresh?: boolean;
+    innerRef?: any;
+  },
+  | "ListEmptyComponent"
+  | "ListFooterComponent"
+  | "data"
+  | "onRefresh"
+  | "refreshing"
+>;
 
 const ActivityIndicator_ = memo(() => {
   const { appTheme } = useAppTheme();
@@ -215,79 +208,77 @@ const ActivityIndicator_ = memo(() => {
   );
 });
 
-const ListHeaderComponent = memo(({
-  isEmpty,
-  isLoading,
-  hideListHeaderComponentWhenEmpty,
-  hideListHeaderComponentWhenLoading,
-  ListHeaderComponent,
-}: {
-  isEmpty: boolean,
-  isLoading: boolean,
-  hideListHeaderComponentWhenEmpty: boolean,
-  hideListHeaderComponentWhenLoading: boolean,
-  ListHeaderComponent: any,
-}) => {
-  if (isEmpty && isLoading && hideListHeaderComponentWhenLoading) {
-    return <></>;
-  } else if (isEmpty && hideListHeaderComponentWhenEmpty) {
-    return <></>;
-  } else {
-    return <RenderedHoc Hoc={ListHeaderComponent}/>;
-  }
-});
+const ListHeaderComponent = memo(
+  ({
+    isEmpty,
+    isLoading,
+    hideListHeaderComponentWhenEmpty,
+    hideListHeaderComponentWhenLoading,
+    ListHeaderComponent,
+  }: {
+    isEmpty: boolean;
+    isLoading: boolean;
+    hideListHeaderComponentWhenEmpty: boolean;
+    hideListHeaderComponentWhenLoading: boolean;
+    ListHeaderComponent: any;
+  }) => {
+    if (isEmpty && isLoading && hideListHeaderComponentWhenLoading) {
+      return <></>;
+    } else if (isEmpty && hideListHeaderComponentWhenEmpty) {
+      return <></>;
+    } else {
+      return <RenderedHoc Hoc={ListHeaderComponent} />;
+    }
+  },
+);
 
-const ListEmptyComponent = memo(({
-  isComplete,
-  isError,
-  emptyText,
-  errorText,
-}: {
-  isComplete: boolean
-  isError: boolean
-  emptyText: string | null | undefined
-  errorText: string | null | undefined
-}) => {
-  if (isError) {
-    return (
-      <DefaultText style={styles.errorText}>
-        {errorText ? errorText : "Something went wrong"}
-      </DefaultText>
-    );
-  } else if (!isComplete) {
-    return <></>;
-  } else {
-    return (
-      <DefaultText style={styles.emptyText}>
-        {emptyText}
-      </DefaultText>
-    );
-  }
-});
+const ListEmptyComponent = memo(
+  ({
+    isComplete,
+    isError,
+    emptyText,
+    errorText,
+  }: {
+    isComplete: boolean;
+    isError: boolean;
+    emptyText: string | null | undefined;
+    errorText: string | null | undefined;
+  }) => {
+    if (isError) {
+      return (
+        <DefaultText style={styles.errorText}>
+          {errorText ? errorText : "Something went wrong"}
+        </DefaultText>
+      );
+    } else if (!isComplete) {
+      return <></>;
+    } else {
+      return <DefaultText style={styles.emptyText}>{emptyText}</DefaultText>;
+    }
+  },
+);
 
-const ListFooterComponent = memo(({
-  isComplete,
-  isEmpty,
-  EndTextNotice,
-}: {
-  isComplete: boolean,
-  isEmpty: boolean,
-  EndTextNotice: any,
-}) => {
-  if (isComplete && isEmpty) {
-    return <></>;
-  } else if (isComplete && !isEmpty) {
-    return <RenderedHoc Hoc={EndTextNotice}/>;
-  } else {
-    return <ActivityIndicator_/>;
-  }
-});
+const ListFooterComponent = memo(
+  ({
+    isComplete,
+    isEmpty,
+    EndTextNotice,
+  }: {
+    isComplete: boolean;
+    isEmpty: boolean;
+    EndTextNotice: any;
+  }) => {
+    if (isComplete && isEmpty) {
+      return <></>;
+    } else if (isComplete && !isEmpty) {
+      return <RenderedHoc Hoc={EndTextNotice} />;
+    } else {
+      return <ActivityIndicator_ />;
+    }
+  },
+);
 
-const EndTextNotice = ({
-  endText
-}: {
-  endText: string | undefined
-}) => {
+const EndTextNotice = ({ endText }: { endText: string | undefined }) => {
   const { appTheme } = useAppTheme();
 
   if (endText) {
@@ -301,7 +292,10 @@ const EndTextNotice = ({
   }
 };
 
-const useList = <ItemT, ListType>(ref, props: DefaultFlatListProps<ItemT> | DefaultFlashListProps<ItemT>) => {
+const useList = <ItemT, ListType>(
+  ref,
+  props: DefaultFlatListProps<ItemT> | DefaultFlashListProps<ItemT>,
+) => {
   const contentHeight = useRef(0);
   const viewportHeight = useRef(0);
 
@@ -309,11 +303,14 @@ const useList = <ItemT, ListType>(ref, props: DefaultFlatListProps<ItemT> | Defa
 
   const [books, setBooks] = useState<Books<ItemT>>({});
 
-  const dataKey = props.dataKey ?? 'default-key';
+  const dataKey = props.dataKey ?? "default-key";
 
-  const keyExtractor = useCallback((item: ItemT, index: number) => {
-    return JSON.stringify({dataKey, index});
-  }, [dataKey]);
+  const keyExtractor = useCallback(
+    (item: ItemT, index: number) => {
+      return JSON.stringify({ dataKey, index });
+    },
+    [dataKey],
+  );
 
   const fetchNextPage = async () => {
     if (viewportHeight.current < 1e-3) {
@@ -342,7 +339,7 @@ const useList = <ItemT, ListType>(ref, props: DefaultFlatListProps<ItemT> | Defa
       setBookFetchedInBooks(books, page, dataKey, pageNumberToFetchVal - 1);
     }
 
-    setBooks(oldBooks => ({ ...oldBooks, ...books }));
+    setBooks((oldBooks) => ({ ...oldBooks, ...books }));
   };
 
   const onRefresh = () => {
@@ -352,7 +349,7 @@ const useList = <ItemT, ListType>(ref, props: DefaultFlatListProps<ItemT> | Defa
 
     setBookRefreshingInBooks(books, dataKey);
 
-    setBooks(oldBooks => ({ ...oldBooks, ...books }));
+    setBooks((oldBooks) => ({ ...oldBooks, ...books }));
 
     fetchNextPage();
   };
@@ -395,10 +392,13 @@ const useList = <ItemT, ListType>(ref, props: DefaultFlatListProps<ItemT> | Defa
     onContentSizeChange,
     keyExtractor,
     onLayout,
-  }
+  };
 };
 
-const UntypedDefaultFlatList = <ItemT,>(props: DefaultFlatListProps<ItemT>, ref) => {
+const UntypedDefaultFlatList = <ItemT,>(
+  props: DefaultFlatListProps<ItemT>,
+  ref,
+) => {
   const {
     flatList,
     onRefresh,
@@ -416,8 +416,7 @@ const UntypedDefaultFlatList = <ItemT,>(props: DefaultFlatListProps<ItemT>, ref)
         flatList.current = node;
 
         if (props.innerRef === undefined) {
-          ;
-        } else if (typeof props.innerRef === 'function') {
+        } else if (typeof props.innerRef === "function") {
           props.innerRef(node);
         } else {
           props.innerRef.current = node;
@@ -433,7 +432,8 @@ const UntypedDefaultFlatList = <ItemT,>(props: DefaultFlatListProps<ItemT>, ref)
           isComplete={isBookComplete(book)}
           isError={book.isError}
           errorText={props.errorText}
-          emptyText={props.emptyText} />
+          emptyText={props.emptyText}
+        />
       }
       ListFooterComponent={
         <ListFooterComponent
@@ -443,21 +443,18 @@ const UntypedDefaultFlatList = <ItemT,>(props: DefaultFlatListProps<ItemT>, ref)
         />
       }
       {...props}
-      contentContainerStyle={[
-        styles.flatList,
-        props.contentContainerStyle,
-      ]}
+      contentContainerStyle={[styles.flatList, props.contentContainerStyle]}
       ListHeaderComponent={
         <ListHeaderComponent
-            isEmpty={isBookEmpty(book)}
-            isLoading={isBookFetching(book)}
-            hideListHeaderComponentWhenEmpty={
-              props.hideListHeaderComponentWhenEmpty ?? false
-            }
-            hideListHeaderComponentWhenLoading={
-              props.hideListHeaderComponentWhenLoading ?? true
-            }
-            ListHeaderComponent={props.ListHeaderComponent}
+          isEmpty={isBookEmpty(book)}
+          isLoading={isBookFetching(book)}
+          hideListHeaderComponentWhenEmpty={
+            props.hideListHeaderComponentWhenEmpty ?? false
+          }
+          hideListHeaderComponentWhenLoading={
+            props.hideListHeaderComponentWhenLoading ?? true
+          }
+          ListHeaderComponent={props.ListHeaderComponent}
         />
       }
       onContentSizeChange={onContentSizeChange}
@@ -469,7 +466,10 @@ const UntypedDefaultFlatList = <ItemT,>(props: DefaultFlatListProps<ItemT>, ref)
   );
 };
 
-const UntypedDefaultFlashList = <ItemT,>(props: DefaultFlashListProps<ItemT>, ref) => {
+const UntypedDefaultFlashList = <ItemT,>(
+  props: DefaultFlashListProps<ItemT>,
+  ref,
+) => {
   const {
     flatList,
     onRefresh,
@@ -487,8 +487,7 @@ const UntypedDefaultFlashList = <ItemT,>(props: DefaultFlashListProps<ItemT>, re
         flatList.current = node;
 
         if (props.innerRef === undefined) {
-          ;
-        } else if (typeof props.innerRef === 'function') {
+        } else if (typeof props.innerRef === "function") {
           props.innerRef(node);
         } else {
           props.innerRef.current = node;
@@ -504,7 +503,8 @@ const UntypedDefaultFlashList = <ItemT,>(props: DefaultFlashListProps<ItemT>, re
           isComplete={isBookComplete(book)}
           isError={book.isError}
           errorText={props.errorText}
-          emptyText={props.emptyText} />
+          emptyText={props.emptyText}
+        />
       }
       ListFooterComponent={
         <ListFooterComponent
@@ -520,15 +520,15 @@ const UntypedDefaultFlashList = <ItemT,>(props: DefaultFlashListProps<ItemT>, re
       }}
       ListHeaderComponent={
         <ListHeaderComponent
-            isEmpty={isBookEmpty(book)}
-            isLoading={isBookFetching(book)}
-            hideListHeaderComponentWhenEmpty={
-              props.hideListHeaderComponentWhenEmpty ?? false
-            }
-            hideListHeaderComponentWhenLoading={
-              props.hideListHeaderComponentWhenLoading ?? true
-            }
-            ListHeaderComponent={props.ListHeaderComponent}
+          isEmpty={isBookEmpty(book)}
+          isLoading={isBookFetching(book)}
+          hideListHeaderComponentWhenEmpty={
+            props.hideListHeaderComponentWhenEmpty ?? false
+          }
+          hideListHeaderComponentWhenLoading={
+            props.hideListHeaderComponentWhenLoading ?? true
+          }
+          ListHeaderComponent={props.ListHeaderComponent}
         />
       }
       onContentSizeChange={onContentSizeChange}
@@ -538,25 +538,21 @@ const UntypedDefaultFlashList = <ItemT,>(props: DefaultFlashListProps<ItemT>, re
   );
 };
 
-const TypedDefaultFlatList =
-  forwardRef(UntypedDefaultFlatList) as <ItemT>(
-    props: DefaultFlatListProps<ItemT> &
-           React.RefAttributes<FlatList<ItemT>>
-  ) => React.ReactElement | null;
+const TypedDefaultFlatList = forwardRef(UntypedDefaultFlatList) as <ItemT>(
+  props: DefaultFlatListProps<ItemT> & React.RefAttributes<FlatList<ItemT>>,
+) => React.ReactElement | null;
 
-const TypedDefaultFlashList =
-  forwardRef(UntypedDefaultFlashList) as <ItemT>(
-    props: DefaultFlashListProps<ItemT> &
-           React.RefAttributes<FlashListRef<ItemT>>
-  ) => React.ReactElement | null;
+const TypedDefaultFlashList = forwardRef(UntypedDefaultFlashList) as <ItemT>(
+  props: DefaultFlashListProps<ItemT> &
+    React.RefAttributes<FlashListRef<ItemT>>,
+) => React.ReactElement | null;
 
-const DefaultFlatList =
-  memo(TypedDefaultFlatList) as typeof TypedDefaultFlatList;
+const DefaultFlatList = memo(
+  TypedDefaultFlatList,
+) as typeof TypedDefaultFlatList;
 
-const DefaultFlashList =
-  memo(TypedDefaultFlashList) as typeof TypedDefaultFlashList;
+const DefaultFlashList = memo(
+  TypedDefaultFlashList,
+) as typeof TypedDefaultFlashList;
 
-export {
-  DefaultFlatList,
-  DefaultFlashList,
-};
+export { DefaultFlatList, DefaultFlashList };

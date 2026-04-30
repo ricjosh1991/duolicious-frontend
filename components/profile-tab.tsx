@@ -247,7 +247,7 @@ const ProfileTab_ = ({navigation}) => {
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
-      <DuoliciousTopNavBar/>
+      <DuoliciousTopNavBar screenTitle="Profile"/>
       {data &&
         <ScrollView
           ref={observeListRef}
